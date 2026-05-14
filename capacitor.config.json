@@ -1,0 +1,20 @@
+{
+  "appId": "com.michel.garlandat.solitaire",
+  "appName": "Solitaire",
+  "webDir": "App/public",
+  "bundledWebRuntime": false,
+  "backgroundColor": "#1a4a2e",
+  "ios": {
+    "backgroundColor": "#1a4a2e",
+    "contentInset": "automatic",
+    "scrollEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0
+    },
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

@@ -1,0 +1,1879 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>App Solitaire</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fs:1;
+  --gold:#c9a84c;
+  --gold2:#e8c97a;
+  --ink:#0a0806;
+  --felt:#1a4a2e;
+  --felt2:#1f5535;
+  --card-bg:#fdf6e3;
+  --card-w:58px;
+  --card-h:82px;
+  --card-r:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%;overflow:hidden;background:var(--felt)}
+#app{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:var(--felt);overflow:hidden}
+
+/* HEADER */
+.header{
+  padding-top:calc(10px + env(safe-area-inset-top));
+  padding-bottom:8px;
+  background:rgba(0,0,0,0.3);
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding-left:12px;
+  padding-right:12px;
+}
+.header-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:calc(20px * var(--fs));
+  font-weight:700;
+  color:var(--gold);
+  letter-spacing:1px;
+}
+.header-score{
+  font-family:'Cormorant Garamond',serif;
+  font-size:18px;
+  color:var(--gold2);
+  display:flex;
+  gap:14px;
+  align-items:center;
+  flex:1;
+  justify-content:center;
+}
+#score-display{font-size:20px;font-weight:700;color:var(--gold)}
+#moves-display{font-size:17px;color:rgba(201,168,76,0.7)}
+.btn-icon{
+  background:rgba(255,255,255,0.12);
+  border:1px solid rgba(201,168,76,0.4);
+  border-radius:8px;
+  color:var(--gold);
+  font-size:calc(18px * var(--fs));
+  width:36px;height:36px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+}
+/* TABBAR */
+.tabbar{
+  flex-shrink:0;
+  display:flex;
+  align-items:stretch;
+  background:rgba(0,0,0,0.35);
+  border-top:1px solid rgba(201,168,76,0.2);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tab-btn{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:6px 2px;
+  cursor:pointer;
+  gap:2px;
+  color:rgba(201,168,76,0.5);
+  font-family:'Cormorant Garamond',serif;
+  font-size:calc(10px * var(--fs));
+  border:none;background:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.tab-btn .tab-icon{font-size:20px;line-height:1}
+.tab-btn:active{background:rgba(255,255,255,0.05)}
+
+/* MAIN */
+.main{
+  flex:1;
+  overflow:hidden;
+  padding:8px 6px 8px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+/* ZONES */
+.top-row{
+  display:flex;
+  gap:5px;
+  align-items:flex-start;
+  flex-shrink:0;
+}
+.tableau-row{
+  display:flex;
+  gap:5px;
+  flex:1;
+  align-items:flex-start;
+  overflow:hidden;
+}
+
+/* ZONES DE CARTE */
+.zone{
+  width:var(--card-w);
+  height:var(--card-h);
+  border-radius:var(--card-r);
+  border:1.5px dashed rgba(255,255,255,0.2);
+  background:rgba(0,0,0,0.15);
+  flex-shrink:0;
+  position:relative;
+  cursor:pointer;
+}
+.zone.foundation{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:22px;
+  color:rgba(255,255,255,0.2);
+}
+.zone.foundation[data-f="1"] span,.zone.foundation[data-f="2"] span{color:rgba(220,60,60,0.4);}
+.zone.foundation[data-f="0"] span,.zone.foundation[data-f="3"] span{color:rgba(255,255,255,0.2);}
+.zone.stock{cursor:pointer}
+.col-placeholder{
+  position:absolute;top:0;left:0;right:0;
+  height:var(--card-h);
+  border-radius:var(--card-r);
+  border:1.5px dashed rgba(255,255,255,0.15);
+  background:rgba(0,0,0,0.1);
+  display:flex;align-items:center;justify-content:center;
+  color:rgba(255,255,255,0.15);
+  font-size:22px;
+  cursor:pointer;
+}
+.zone.waste{border-style:solid;border-color:transparent;background:transparent}
+
+/* COLONNES TABLEAU */
+.col{
+  flex:1;
+  min-width:0;
+  position:relative;
+  min-height:var(--card-h);
+}
+
+/* CARTES */
+.card{
+  position:absolute;
+  width:var(--card-w);
+  height:var(--card-h);
+  border-radius:var(--card-r);
+  border:1px solid rgba(0,0,0,0.3);
+  background:var(--card-bg);
+  cursor:pointer;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  padding:3px 4px;
+  font-family:'Cormorant Garamond',serif;
+  font-weight:700;
+  box-shadow:1px 2px 4px rgba(0,0,0,0.4);
+  transition:box-shadow 0.1s;
+  -webkit-touch-callout:none;
+}
+.card.face-down{
+  background:linear-gradient(135deg,#1a3a5c 25%,#1e4570 50%,#1a3a5c 75%);
+  background-size:8px 8px;
+  cursor:default;
+}
+.card.face-down::after{
+  content:'';
+  position:absolute;
+  inset:3px;
+  border-radius:4px;
+  border:1px solid rgba(201,168,76,0.3);
+  background:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(201,168,76,0.08) 4px,rgba(201,168,76,0.08) 5px);
+}
+.card-corner{position:absolute;top:3px;left:4px;display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1}
+.card-rank{font-size:calc(14px * var(--fs));line-height:1;font-weight:700;font-variant-numeric:lining-nums tabular-nums}
+.card-suit{font-size:calc(11px * var(--fs));line-height:1.1}
+.card-center{
+  font-size:calc(24px * var(--fs));
+  text-align:center;
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+}
+.card-corner-b{position:absolute;bottom:3px;right:4px;display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1;transform:rotate(180deg)}
+.card-rank-b{font-size:calc(14px * var(--fs));line-height:1;font-weight:700;font-variant-numeric:lining-nums tabular-nums}
+.card-suit-b{font-size:calc(11px * var(--fs));line-height:1.1}
+.card.red .card-rank,.card.red .card-rank-b,.card.red .card-suit,.card.red .card-suit-b,.card.red .card-center{color:#c0392b}
+.card.black .card-rank,.card.black .card-rank-b,.card.black .card-suit,.card.black .card-suit-b,.card.black .card-center{color:#1a1a1a}
+.card.selected{
+  box-shadow:0 0 0 2px var(--gold),1px 2px 8px rgba(0,0,0,0.5);
+  z-index:50 !important;
+}
+.card.hint-src{
+  box-shadow:0 0 0 2px #4fc3f7,0 0 12px rgba(79,195,247,0.6),1px 2px 8px rgba(0,0,0,0.5);
+  z-index:50 !important;
+  animation:hint-pulse 0.8s ease-in-out 3;
+}
+.card.hint-dst{
+  box-shadow:0 0 0 2px #81c784,0 0 12px rgba(129,199,132,0.6),1px 2px 8px rgba(0,0,0,0.5);
+  z-index:49 !important;
+}
+@keyframes hint-pulse{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.04)}
+}
+.card.dragging{
+  opacity:0.85;
+  box-shadow:3px 6px 16px rgba(0,0,0,0.6);
+  z-index:1000 !important;
+  transition:none;
+  pointer-events:none;
+}
+
+/* STOCK CARD */
+.stock-card{
+  width:var(--card-w);
+  height:var(--card-h);
+  border-radius:var(--card-r);
+  border:1px solid rgba(0,0,0,0.3);
+  background:linear-gradient(135deg,#1a3a5c 25%,#1e4570 50%,#1a3a5c 75%);
+  box-shadow:1px 2px 4px rgba(0,0,0,0.4);
+  cursor:pointer;
+  position:absolute;
+  top:0;left:0;
+}
+.stock-card::after{
+  content:'';
+  position:absolute;
+  inset:3px;
+  border-radius:4px;
+  border:1px solid rgba(201,168,76,0.3);
+  background:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(201,168,76,0.08) 4px,rgba(201,168,76,0.08) 5px);
+}
+.stock-empty{
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  font-size:24px;
+  color:rgba(255,255,255,0.3);
+  cursor:pointer;
+}
+
+
+/* OVERLAY VICTOIRE */
+.overlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.75);
+  z-index:500;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:20px;
+}
+.overlay.show{display:flex}
+.overlay h2{
+  font-family:'Cormorant Garamond',serif;
+  font-size:calc(32px * var(--fs));
+  color:var(--gold);
+  text-align:center;
+}
+.overlay p{
+  font-family:'Cormorant Garamond',serif;
+  font-size:calc(18px * var(--fs));
+  color:var(--gold2);
+}
+.btn-main{
+  background:rgba(201,168,76,0.2);
+  border:1.5px solid var(--gold);
+  border-radius:10px;
+  color:var(--gold);
+  font-family:'Cormorant Garamond',serif;
+  font-size:calc(18px * var(--fs));
+  padding:12px 32px;
+  cursor:pointer;
+  font-weight:600;
+}
+
+/* SETTINGS */
+
+.settings-row{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  margin-bottom:16px;
+  flex-wrap:wrap;
+}
+.settings-label{
+  font-family:'Cormorant Garamond',serif;
+  color:var(--gold2);
+  font-size:calc(15px * var(--fs));
+  min-width:120px;
+}
+.settings-btn{
+  background:rgba(255,255,255,0.1);
+  border:1px solid rgba(201,168,76,0.4);
+  border-radius:8px;
+  color:var(--gold);
+  font-size:calc(14px * var(--fs));
+  padding:6px 14px;
+  cursor:pointer;
+}
+.settings-btn.active{
+  background:rgba(201,168,76,0.25);
+  border-color:var(--gold);
+}
+
+.stats-box{
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(201,168,76,0.2);
+  border-radius:10px;
+  padding:12px;
+  margin-top:8px;
+}
+.stats-row{
+  display:flex;
+  justify-content:space-between;
+  padding:4px 0;
+  border-bottom:1px solid rgba(255,255,255,0.05);
+  font-family:'Cormorant Garamond',serif;
+  font-size:calc(14px * var(--fs));
+  color:var(--gold2);
+}
+.stats-row:last-child{border-bottom:none}
+
+/* PANELS AIDE & APPS */
+.panel{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:#0d2e1a;
+  z-index:400;
+  flex-direction:column;
+  overflow:hidden;
+}
+.panel.show{display:flex}
+.panel-header{
+  padding:calc(16px + env(safe-area-inset-top)) 16px 12px;
+  background:rgba(0,0,0,0.3);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-shrink:0;
+  border-bottom:1px solid rgba(201,168,76,0.2);
+}
+.panel-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:calc(20px * var(--fs));
+  font-weight:700;
+  color:var(--gold);
+}
+.panel-body{
+  flex:1;
+  overflow-y:auto;
+  padding:16px;
+  padding-bottom:calc(16px + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling:touch;
+}
+.lang-toggle{
+  display:flex;gap:8px;
+  margin-bottom:16px;
+}
+.lang-btn{
+  background:rgba(255,255,255,0.1);
+  border:1px solid rgba(201,168,76,0.3);
+  border-radius:8px;
+  color:var(--gold2);
+  font-size:20px;
+  padding:4px 12px;
+  cursor:pointer;
+}
+.lang-btn.active{
+  background:rgba(201,168,76,0.25);
+  border-color:var(--gold);
+}
+.help-section{
+  margin-bottom:20px;
+}
+.help-h{
+  font-family:'Cormorant Garamond',serif;
+  font-size:calc(17px * var(--fs));
+  font-weight:700;
+  color:var(--gold);
+  margin-bottom:8px;
+  border-bottom:1px solid rgba(201,168,76,0.2);
+  padding-bottom:4px;
+}
+.help-p{
+  font-family:'Cormorant Garamond',serif;
+  font-size:calc(15px * var(--fs));
+  color:var(--gold2);
+  line-height:1.6;
+  margin-bottom:6px;
+}
+/* APPS GRID */
+.apps-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+  margin-top:8px;
+}
+.apps-grid-item{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  cursor:pointer;
+}
+.apps-grid-item img{
+  width:56px;height:56px;
+  border-radius:13px;
+  background:rgba(255,255,255,0.1);
+}
+.apps-grid-item span{
+  font-family:'Cormorant Garamond',serif;
+  font-size:calc(10px * var(--fs));
+  color:var(--gold2);
+  text-align:center;
+  line-height:1.2;
+}
+.apps-badge{
+  display:block;
+  margin:20px auto 0;
+  height:40px;
+}
+
+@keyframes icon-appear{
+  0%{opacity:0;transform:scale(0.3) rotate(-15deg)}
+  70%{transform:scale(1.15) rotate(3deg)}
+  100%{opacity:1;transform:scale(1) rotate(0deg)}
+}
+
+/* DRAG GHOST */
+#drag-ghost{
+  position:fixed;
+  pointer-events:none;
+  z-index:2000;
+  display:none;
+  flex-direction:column;
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-title">♠ App Solitaire</div>
+    <div class="header-score">
+      <span id="score-display">0 pts</span>
+      <span id="moves-display">0 coups</span>
+      <span id="stock-badge" style="font-size:15px;color:rgba(201,168,76,0.5)">🂠 24</span>
+    </div>
+    <div id="lang-flag" onclick="toggleLang()" style="font-size:24px;cursor:pointer;padding:4px 6px;line-height:1;flex-shrink:0;min-width:36px;text-align:center">🇬🇧</div>
+  </div>
+
+  <div class="main" id="main-area">
+    <!-- top row: stock + waste + spacers + 4 fondations -->
+    <div class="top-row" id="top-row">
+      <div class="zone stock" id="zone-stock">
+        <div class="stock-empty" id="stock-empty">↺</div>
+      </div>
+      <div class="zone waste" id="zone-waste"></div>
+      <div style="flex:1"></div>
+      <div class="zone foundation" id="zone-f0" data-f="0"><span>♠</span></div>
+      <div class="zone foundation" id="zone-f1" data-f="1"><span>♥</span></div>
+      <div class="zone foundation" id="zone-f2" data-f="2"><span>♦</span></div>
+      <div class="zone foundation" id="zone-f3" data-f="3"><span>♣</span></div>
+    </div>
+    <!-- tableau: 7 colonnes -->
+    <div class="tableau-row" id="tableau-row">
+      <div class="col" id="col-0" data-col="0"></div>
+      <div class="col" id="col-1" data-col="1"></div>
+      <div class="col" id="col-2" data-col="2"></div>
+      <div class="col" id="col-3" data-col="3"></div>
+      <div class="col" id="col-4" data-col="4"></div>
+      <div class="col" id="col-5" data-col="5"></div>
+      <div class="col" id="col-6" data-col="6"></div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <button class="tab-btn" onclick="confirmNewGame()">
+      <span class="tab-icon">↺</span>
+      <span id="tb-new">Nouvelle</span>
+    </button>
+    <button class="tab-btn" onclick="confirmQuit()">
+      <span class="tab-icon">🏳</span>
+      <span id="tb-quit">Abandon</span>
+    </button>
+    <button class="tab-btn" onclick="undoMove()">
+      <span class="tab-icon">↩</span>
+      <span id="tb-undo">Annuler</span>
+    </button>
+    <button class="tab-btn" id="btn-hint" onclick="showHint()">
+      <span class="tab-icon">💡</span>
+      <span>Hint</span>
+    </button>
+    <button class="tab-btn" onclick="openHelp()">
+      <span class="tab-icon">?</span>
+      <span id="tb-help">Aide</span>
+    </button>
+    <button class="tab-btn" onclick="openApps()">
+      <span class="tab-icon">📱</span>
+      <span id="tb-apps">Mes apps</span>
+    </button>
+    <button class="tab-btn" onclick="openSettings()">
+      <span class="tab-icon">⚙</span>
+      <span id="tb-settings">Réglages</span>
+    </button>
+  </div>
+</div>
+
+<!-- Drag ghost -->
+<div id="drag-ghost"></div>
+
+<!-- Victoire -->
+<div class="overlay" id="win-overlay">
+  <div style="font-size:48px">🏆</div>
+  <h2>Bravo !</h2>
+  <p id="win-score">Score : 0 pts en 0 coups</p>
+  <button class="btn-main" onclick="newGame();closeOverlay()">Nouvelle partie</button>
+</div>
+
+<!-- Settings -->
+<div class="panel" id="settings-panel">
+  <div class="panel-header">
+    <span class="panel-title">⚙ Réglages</span>
+    <div class="btn-icon" onclick="closePanel('settings-panel')">✕</div>
+  </div>
+  <div class="panel-body">
+    <div class="settings-row">
+      <span class="settings-label" id="lbl-myapps">Mes apps</span>
+      <button class="settings-btn active" id="btn-splash-on" onclick="setSplash(true)">Activé</button>
+      <button class="settings-btn" id="btn-splash-off" onclick="setSplash(false)">Désactivé</button>
+    </div>
+    <div class="settings-row">
+      <span class="settings-label" id="lbl-draw">Tirage</span>
+      <button class="settings-btn active" id="btn-draw1" onclick="setDraw(1)">1 carte</button>
+      <button class="settings-btn" id="btn-draw3" onclick="setDraw(3)">3 cartes</button>
+    </div>
+
+    <div class="stats-box">
+      <div class="stats-row"><span id="lbl-played">Parties jouées</span><span id="st-played">0</span></div>
+      <div class="stats-row"><span id="lbl-won">Parties gagnées</span><span id="st-won">0</span></div>
+      <div class="stats-row"><span id="lbl-best">Meilleur score</span><span id="st-best">—</span></div>
+      <div class="stats-row"><span id="lbl-time">Meilleur temps</span><span id="st-time">—</span></div>
+    </div>
+    <div style="margin-top:12px">
+      <button class="settings-btn" onclick="resetStats()" style="color:rgba(255,100,100,0.8);border-color:rgba(255,100,100,0.3)">🗑 Remettre les scores à zéro</button>
+    </div>
+  </div>
+</div>
+
+<!-- Aide -->
+<div class="panel" id="help-panel">
+  <div class="panel-header">
+    <span class="panel-title" id="help-title">? Aide</span>
+    <div class="btn-icon" onclick="closePanel('help-panel')">✕</div>
+  </div>
+  <div class="panel-body">
+    <div class="lang-toggle">
+      <button class="lang-btn active" id="help-fr" onclick="setHelpLang('fr')">🇫🇷</button>
+      <button class="lang-btn" id="help-en" onclick="setHelpLang('en')">🇬🇧</button>
+    </div>
+    <div id="help-content"></div>
+  </div>
+</div>
+
+<!-- Mes Apps -->
+<div class="panel" id="apps-panel">
+  <div class="panel-header">
+    <span class="panel-title">📱 Mes apps</span>
+    <div class="btn-icon" onclick="closePanel('apps-panel')">✕</div>
+  </div>
+  <div class="panel-body">
+    <div class="apps-grid" id="apps-grid"></div>
+    <a href="https://apps.apple.com/fr/developer/michel-garlandat/id368739198" target="_blank">
+      <img class="apps-badge" src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/fr-fr" alt="App Store">
+    </a>
+  </div>
+</div>
+
+<!-- Confirm overlay -->
+<div class="overlay" id="confirm-overlay">
+  <div style="font-size:40px" id="confirm-icon">↺</div>
+  <h2 id="confirm-title">Nouvelle partie ?</h2>
+  <p id="confirm-msg">La partie en cours sera perdue.</p>
+  <div style="display:flex;gap:12px;margin-top:8px">
+    <button class="btn-main" id="confirm-yes" onclick="confirmYes()">Oui</button>
+    <button class="btn-main" style="background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.2);color:rgba(255,255,255,0.6)" onclick="closeOverlay('confirm-overlay')">Non</button>
+  </div>
+</div>
+
+<script>
+// ─── CONSTANTES ───────────────────────────────────────────────────
+const SUITS = ['♠','♥','♦','♣'];
+const SUIT_COLOR = {'♠':'black','♥':'red','♦':'red','♣':'black'};
+const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const RANK_VAL = {};
+RANKS.forEach((r,i)=>{RANK_VAL[r]=i+1});
+
+// ─── ÉTAT DU JEU ──────────────────────────────────────────────────
+let state = {};
+let drawCount = 1;
+let showSplash = true;
+
+let stats = {played:0,won:0,bestScore:null,bestTime:null};
+let history = [];
+let score = 0;
+let moves = 0;
+let startTime = null;
+let timerInterval = null;
+let selected = null; // {source:'col'|'waste'|'found', colIdx, cardIdx, cards:[]}
+let wasteVisible = []; // indices dans le deck retourné
+
+// ─── INIT ──────────────────────────────────────────────────────────
+window.addEventListener('load', ()=>{
+  loadPrefs();
+  initCardSize();
+  preloadIcons();
+  applyLang();
+  newGame();
+  setupDrop();
+});
+
+function loadPrefs(){
+  const p = localStorage.getItem('solitaire_prefs');
+  if(p){
+    const o = JSON.parse(p);
+    drawCount = o.draw||1;
+    showSplash = o.splash!==undefined ? o.splash : true;
+  }
+  const s = localStorage.getItem('solitaire_stats');
+  if(s) stats = JSON.parse(s);
+  updateSettingsUI();
+}
+function savePrefs(){
+  localStorage.setItem('solitaire_prefs',JSON.stringify({draw:drawCount,splash:showSplash}));
+  localStorage.setItem('solitaire_stats',JSON.stringify(stats));
+}
+
+function isIPad(){
+  return navigator.maxTouchPoints>1 && Math.min(screen.width,screen.height)>=768;
+}
+function initCardSize(){
+  let cw;
+  if(isIPad()){
+    const screenW = Math.min(window.screen.width, window.screen.height);
+    cw = Math.floor((screenW - 24 - 30) / 7);
+    cw = Math.max(70, Math.min(100, cw));
+  } else {
+    cw = 58;
+  }
+  const ch = Math.floor(cw*1.42);
+  document.documentElement.style.setProperty('--card-w',cw+'px');
+  document.documentElement.style.setProperty('--card-h',ch+'px');
+}
+
+// ─── NOUVEAU JEU ──────────────────────────────────────────────────
+function newGame(){
+  clearInterval(timerInterval);
+  history = [];
+  score = 0;
+  moves = 0;
+  selected = null;
+  wasteVisible = [];
+
+  const deck = makeDeck();
+  shuffle(deck);
+
+  let idx=0;
+  const tableau=[];
+  for(let i=0;i<7;i++){
+    const col=[];
+    for(let j=0;j<=i;j++){
+      const c=deck[idx++];
+      col.push({suit:c.suit,rank:c.rank,color:c.color,faceUp:j===i});
+    }
+    tableau.push(col);
+  }
+  state={
+    stock:deck.slice(idx).map(c=>({suit:c.suit,rank:c.rank,color:c.color,faceUp:false})),
+    waste:[],
+    foundations:[[],[],[],[]],
+    tableau:tableau
+  };
+
+  startTime = Date.now();
+  timerInterval = setInterval(updateTimer,1000);
+  stats.played++;
+  savePrefs();
+
+  render();
+  updateScore();
+}
+
+function makeDeck(){
+  const d=[];
+  SUITS.forEach(s=>RANKS.forEach(r=>d.push({suit:s,rank:r,color:SUIT_COLOR[s]})));
+  return d;
+}
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+}
+
+// ─── RENDU ────────────────────────────────────────────────────────
+function render(){
+  clearHint();
+  renderStock();
+  renderWaste();
+  renderFoundations();
+  renderTableau();
+  layoutTableau();
+}
+
+function cardHTML(c){
+  if(!c.faceUp) return `<div class="card face-down"></div>`;
+  return `<div class="card ${c.color}">
+    <div><div class="card-rank">${c.rank}</div><div class="card-suit">${c.suit}</div></div>
+    <div class="card-center">${c.suit}</div>
+    <div class="bottom"><div class="card-rank-b">${c.rank}</div><div class="card-suit-b">${c.suit}</div></div>
+  </div>`;
+}
+
+function renderStock(){
+  const z = document.getElementById('zone-stock');
+  const empty = document.getElementById('stock-empty');
+  Array.from(z.querySelectorAll('.stock-card,.stock-count')).forEach(e=>e.remove());
+  if(state.stock.length>0){
+    empty.style.display='none';
+    const d = document.createElement('div');
+    d.className='stock-card';
+    z.appendChild(d);
+  } else {
+    empty.style.display='block';
+  }
+  // badge dans le header
+  const sb=document.getElementById('stock-badge');
+  if(sb) sb.textContent='🂠 '+state.stock.length;
+}
+
+function renderWaste(){
+  const z = document.getElementById('zone-waste');
+  z.innerHTML='';
+  if(state.waste.length===0) return;
+  // afficher les drawCount dernières cartes
+  const show = Math.min(drawCount, state.waste.length);
+  for(let i=show-1;i>=0;i--){
+    const c = state.waste[state.waste.length-show+i];
+    const el = createCardEl(c, true);
+    el.style.position='absolute';
+    el.style.left=(i*16)+'px';
+    el.style.top='0';
+    el.style.zIndex=i+1;
+    if(i===show-1){
+      el.onclick=()=>selectWaste();
+      setupDragCard(el,'waste',null,state.waste.length-1,[c]);
+    }
+    if(selected && selected.source==='waste' && i===show-1){
+      el.classList.add('selected');
+    }
+    z.appendChild(el);
+  }
+  z.style.width=((show-1)*16+parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-w')))+'px';
+}
+
+function createCardEl(c, faceUp){
+  const el = document.createElement('div');
+  el.className = faceUp ? `card ${c.color}` : 'card face-down';
+  if(faceUp){
+    el.innerHTML=`
+      <div class="card-corner"><div class="card-rank">${c.rank}</div><div class="card-suit">${c.suit}</div></div>
+      <div class="card-center">${c.suit}</div>
+      <div class="card-corner-b"><div class="card-rank-b">${c.rank}</div><div class="card-suit-b">${c.suit}</div></div>`;
+  }
+  return el;
+}
+
+function renderFoundations(){
+  const symbols = ['♠','♥','♦','♣'];
+  const redSuits = [false,true,true,false];
+  for(let f=0;f<4;f++){
+    const z = document.getElementById('zone-f'+f);
+    z.innerHTML='';
+    const stack = state.foundations[f];
+    if(stack.length===0){
+      const color = redSuits[f] ? 'rgba(220,60,60,0.4)' : 'rgba(255,255,255,0.2)';
+      z.innerHTML=`<span style="color:${color};font-size:20px">${symbols[f]}</span>`;
+      z.onclick=()=>moveToFoundationSelected(f);
+    } else {
+      const c=stack[stack.length-1];
+      const el=createCardEl(c,true);
+      el.style.position='absolute';
+      el.style.top='0';el.style.left='0';
+      el.onclick=()=>moveToFoundationSelected(f);
+      z.appendChild(el);
+    }
+  }
+}
+
+function renderTableau(){
+  for(let col=0;col<7;col++){
+    const z = document.getElementById('col-'+col);
+    z.innerHTML='';
+    const stack = state.tableau[col];
+    // Placeholder cliquable sur colonne vide
+    const ph=document.createElement('div');
+    ph.className='col-placeholder';
+    ph.innerHTML='K';
+    ph.onclick=(e)=>{e.stopPropagation();dropOnColumn(col)};
+    z.appendChild(ph);
+    for(let i=0;i<stack.length;i++){
+      const c=stack[i];
+      const el=createCardEl(c,c.faceUp);
+      el.style.position='absolute';
+      if(c.faceUp){
+        const ci=col; const ii=i;
+        el.onclick=(e)=>{e.stopPropagation();selectTableau(ci,ii)};
+        if(selected&&selected.source==='col'&&selected.colIdx===col&&selected.cardIdx===i){
+          el.classList.add('selected');
+        }
+        setupDragCard(el,'col',col,i,stack.slice(i).map(x=>({...x})));
+      }
+      z.appendChild(el);
+    }
+    z.onclick=(e)=>{if(e.target===z||e.target===ph)dropOnColumn(col)};
+  }
+}
+
+function layoutTableau(){
+  const cardH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-h'));
+  const tableauRow=document.getElementById('tableau-row');
+  const available=tableauRow.clientHeight;
+  for(let col=0;col<7;col++){
+    const z=document.getElementById('col-'+col);
+    const stack=state.tableau[col];
+    if(stack.length===0){
+      z.style.minHeight=cardH+'px';
+      continue;
+    }
+    const faceDownCount=stack.filter(c=>!c.faceUp).length;
+    const faceUpCount=stack.filter(c=>c.faceUp).length;
+    const needed=faceDownCount*14 + (faceUpCount>1?faceUpCount-1:0)*20 + cardH;
+    const maxOff=Math.max(12,Math.min(24,Math.floor((available-cardH)/Math.max(stack.length-1,1))));
+    const cards=Array.from(z.children).filter(el=>!el.classList.contains('col-placeholder'));
+    let y=0;
+    for(let i=0;i<stack.length;i++){
+      if(cards[i]) cards[i].style.top=y+'px';
+      if(i<stack.length-1){
+        y+= stack[i].faceUp ? maxOff : Math.min(14,maxOff);
+      }
+    }
+    const totalH=y+cardH;
+    z.style.minHeight=totalH+'px';
+  }
+}
+
+// ─── PIOCHE ───────────────────────────────────────────────────────
+function drawCard(){
+  saveHistory();
+  if(state.stock.length===0){
+    // recycler waste→stock
+    state.stock = [...state.waste].reverse().map(c=>({...c,faceUp:false}));
+    state.waste=[];
+    score=Math.max(0,score-100);
+  } else {
+    const n=Math.min(drawCount,state.stock.length);
+    for(let i=0;i<n;i++){
+      const c=state.stock.pop();
+      c.faceUp=true;
+      state.waste.push(c);
+    }
+    score+=5;
+    moves++;
+  }
+  selected=null;
+  render();
+  updateScore();
+}
+
+// ─── SÉLECTION & DÉPLACEMENT ──────────────────────────────────────
+function selectWaste(){
+  if(selected&&selected.source==='waste'){
+    selected=null;
+    render();
+    return;
+  }
+  if(state.waste.length===0) return;
+  const c=state.waste[state.waste.length-1];
+  selected={source:'waste',cards:[c]};
+  render();
+  tryAutoMove();
+}
+
+function selectTableau(col,idx){
+  const stack=state.tableau[col];
+  if(!stack[idx].faceUp) return;
+  if(selected){
+    // tenter de déposer
+    if(selected.source==='col'&&selected.colIdx===col&&selected.cardIdx===idx){
+      selected=null;render();return;
+    }
+    if(tryDropOnColumn(col)){return;}
+    // sinon reselectionner
+  }
+  selected={source:'col',colIdx:col,cardIdx:idx,cards:stack.slice(idx).map(c=>({...c}))};
+  render();
+  if(selected.cards.length===1) tryAutoMove();
+}
+
+function moveToFoundationSelected(f){
+  if(!selected) {
+    // essayer depuis waste ou dessus colonnes
+    tryAutoMoveTop();
+    return;
+  }
+  if(selected.cards.length>1){selected=null;render();return;}
+  const c=selected.cards[0];
+  if(canPlaceFoundation(c,f)){
+    saveHistory();
+    state.foundations[f].push(c);
+    removeSelected();
+    selected=null;
+    score+=15;
+    moves++;
+    clearAppSplash();render();
+    updateScore();
+    showAppSplash();checkWin();
+  }
+}
+
+function tryDropOnColumn(col){
+  if(!selected) return false;
+  if(!canPlaceTableau(selected.cards[0],col)) return false;
+  saveHistory();
+  removeSelected();
+  state.tableau[col].push(...selected.cards);
+  selected=null;
+  moves++;
+  score+=5;
+  // retourner carte du dessus si face cachée
+  flipTopCards();
+  render();
+  updateScore();
+  return true;
+}
+
+function dropOnColumn(col){
+  if(selected) tryDropOnColumn(col);
+}
+
+function removeSelected(){
+  if(selected.source==='waste'){
+    state.waste.pop();
+  } else if(selected.source==='col'){
+    state.tableau[selected.colIdx].splice(selected.cardIdx);
+  }
+  flipTopCards();
+}
+
+function flipTopCards(){
+  for(let col=0;col<7;col++){
+    const stack=state.tableau[col];
+    if(stack.length>0&&!stack[stack.length-1].faceUp){
+      stack[stack.length-1].faceUp=true;
+      score+=10;
+    }
+  }
+}
+
+// ─── RÈGLES ───────────────────────────────────────────────────────
+function canPlaceTableau(card, col){
+  const stack=state.tableau[col];
+  if(stack.length===0) return card.rank==='K';
+  const top=stack[stack.length-1];
+  if(!top.faceUp) return false;
+  return top.color!==card.color && RANK_VAL[top.rank]===RANK_VAL[card.rank]+1;
+}
+
+function canPlaceFoundation(card, f){
+  const stack=state.foundations[f];
+  if(stack.length===0) return card.rank==='A';
+  const top=stack[stack.length-1];
+  return top.suit===card.suit && RANK_VAL[top.rank]===RANK_VAL[card.rank]-1;
+}
+
+function findFoundationFor(card){
+  for(let f=0;f<4;f++){
+    if(canPlaceFoundation(card,f)) return f;
+  }
+  return -1;
+}
+
+// ─── AUTO-MOVE ────────────────────────────────────────────────────
+function tryAutoMove(){
+  if(!selected||selected.cards.length!==1) return;
+  const c=selected.cards[0];
+  const f=findFoundationFor(c);
+  if(f>=0){
+    setTimeout(()=>{
+      if(!selected) return;
+      saveHistory();
+      state.foundations[f].push(c);
+      removeSelected();
+      selected=null;
+      score+=15;moves++;
+      clearAppSplash();render();updateScore();showAppSplash();checkWin();
+    },150);
+  }
+}
+
+function tryAutoMoveTop(){
+  // auto-move depuis waste ou dessus colonne
+  let moved=false;
+  const checkCard=(c,remove)=>{
+    const f=findFoundationFor(c);
+    if(f<0) return false;
+    saveHistory();
+    state.foundations[f].push(c);
+    remove();
+    score+=15;moves++;
+    flipTopCards();
+    return true;
+  };
+  if(state.waste.length>0){
+    if(checkCard(state.waste[state.waste.length-1],()=>state.waste.pop())) moved=true;
+  }
+  if(!moved){
+    for(let col=0;col<7;col++){
+      const stack=state.tableau[col];
+      if(stack.length>0&&stack[stack.length-1].faceUp){
+        if(checkCard(stack[stack.length-1],()=>stack.pop())){moved=true;break;}
+      }
+    }
+  }
+  if(moved){clearAppSplash();render();updateScore();showAppSplash();checkWin();}
+}
+
+// ─── UNDO ──────────────────────────────────────────────────────────
+function saveHistory(){
+  history.push(JSON.parse(JSON.stringify({state,score,moves})));
+  if(history.length>50) history.shift();
+}
+function undoMove(){
+  if(history.length===0) return;
+  const prev=history.pop();
+  state=prev.state;score=prev.score;moves=prev.moves;
+  selected=null;
+  render();updateScore();
+}
+
+// ─── ICONE APP SUR TAPIS ─────────────────────────────────────────
+// Cache des icônes pré-chargées
+const iconCache = {};
+let iconCacheReady = false;
+
+async function loadImgCapacitor(url, imgEl){
+  try {
+    const Http = Capacitor && Capacitor.Plugins && Capacitor.Plugins.CapacitorHttp;
+    if(!Http) { imgEl.src=url; return; }
+    const r = await Http.get({url, responseType:'arraybuffer'});
+    if(r.data) imgEl.src='data:image/jpeg;base64,'+r.data;
+    else imgEl.src=url;
+  } catch(e){ imgEl.src=url; }
+}
+
+function preloadIcons(){
+  const apps = APPS.filter(a=>a.id);
+  let loaded = 0;
+  apps.forEach(a=>{
+    const cbName = 'itcb_pre_'+a.id;
+    window[cbName] = function(d){
+      if(d.results&&d.results[0]){
+        const artUrl = d.results[0].artworkUrl60;
+        // Tester si l'URL charge directement
+        const testImg = new Image();
+        testImg.onload = ()=>{ iconCache[a.id] = artUrl; };
+        testImg.onerror = async ()=>{
+          // Bloqué sur iOS -> CapacitorHttp base64
+          try {
+            const Http = window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.CapacitorHttp;
+            if(!Http){ iconCache[a.id]=artUrl; return; }
+            const r1 = await Http.get({url:'https://itunes.apple.com/lookup?id='+a.id+'&country=fr'});
+            const data = typeof r1.data==='string' ? JSON.parse(r1.data) : r1.data;
+            if(!data.results||!data.results[0]) return;
+            const url2 = data.results[0].artworkUrl60;
+            const r2 = await Http.get({url:url2, responseType:'arraybuffer'});
+            if(r2.data) iconCache[a.id]='data:image/jpeg;base64,'+r2.data;
+          } catch(e){ iconCache[a.id]=artUrl; }
+        };
+        testImg.src = artUrl;
+      }
+      loaded++;
+      if(loaded>=apps.length) iconCacheReady=true;
+    };
+    const s=document.createElement('script');
+    s.src='https://itunes.apple.com/lookup?id='+a.id+'&callback='+cbName;
+    document.body.appendChild(s);
+  });
+  setTimeout(()=>{ iconCacheReady=true; }, 4000);
+}
+
+function showAppSplash(){
+  if(!showSplash) return;
+  const apps = APPS.filter(a=>a.id);
+  if(!apps.length) return;
+  const app = apps[Math.floor(Math.random()*apps.length)];
+
+  const old = document.getElementById('tapis-icons');
+  if(old) old.remove();
+
+  const mainEl = document.getElementById('main-area');
+  const rect = mainEl.getBoundingClientRect();
+  const iconSize = 70;
+  const margin = 16;
+  const x = margin + Math.random()*Math.max(10, rect.width - iconSize - margin*2);
+  const yMin = rect.height * 0.65;
+  const yMax = rect.height - iconSize - margin;
+  const y = yMin + Math.random()*Math.max(10, yMax - yMin);
+
+  const div = document.createElement('div');
+  div.id = 'tapis-icons';
+  div.style.cssText = 'position:fixed;z-index:9999;pointer-events:auto;'
+    +'left:'+(rect.left+x)+'px;top:'+(rect.top+y)+'px;'
+    +'width:'+iconSize+'px;'
+    +'display:flex;flex-direction:column;align-items:center;gap:4px;'
+    +'cursor:pointer;animation:icon-appear 0.4s ease-out';
+  div.onclick = e => {
+    e.stopPropagation();
+    window.open('https://apps.apple.com/app/id'+app.id, '_system');
+  };
+
+  // Carré avec icône
+  const box = document.createElement('div');
+  box.style.cssText = 'width:56px;height:56px;border-radius:13px;'
+    +'background:#2a1a00;border:2px solid #c9a84c;overflow:hidden;'
+    +'box-shadow:0 4px 16px rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center';
+
+  // Image via JSONP si cache dispo, sinon fond doré seul
+  if(iconCache[app.id]){
+    const img = document.createElement('img');
+    img.style.cssText = 'width:56px;height:56px;border-radius:11px;display:block';
+    img.src = iconCache[app.id];
+    box.appendChild(img);
+  } else {
+    box.textContent = '📱';
+    box.style.fontSize = '28px';
+  }
+
+  const lbl = document.createElement('div');
+  lbl.textContent = app.name;
+  lbl.style.cssText = 'font-family:Cormorant Garamond,serif;font-size:11px;font-weight:700;'
+    +'color:#fff;text-align:center;max-width:70px;line-height:1.2;'
+    +'text-shadow:0 1px 4px #000,0 0 8px #000';
+
+  div.appendChild(box);
+  div.appendChild(lbl);
+  document.body.appendChild(div);
+}
+
+function clearAppSplash(){
+  const container = document.getElementById('tapis-icons');
+  if(container) container.remove();
+}
+
+// ─── VICTOIRE ─────────────────────────────────────────────────────
+function checkWin(){
+  const won=state.foundations.every(f=>f.length===13);
+  if(won){
+    clearInterval(timerInterval);
+    const elapsed=Math.floor((Date.now()-startTime)/1000);
+    score+=Math.max(0,300-elapsed)*2;
+    stats.won++;
+    if(!stats.bestScore||score>stats.bestScore) stats.bestScore=score;
+    if(!stats.bestTime||elapsed<stats.bestTime) stats.bestTime=elapsed;
+    savePrefs();
+    updateScore();
+    document.getElementById('win-score').textContent=t('winScore')+' : '+score+' '+t('pts')+' — '+moves+' '+t('moves');
+    document.getElementById('win-overlay').classList.add('show');
+  }
+}
+function closeOverlay(id){
+  id=id||'win-overlay';
+  document.getElementById(id).classList.remove('show');
+}
+
+// ─── TIMER & SCORE ────────────────────────────────────────────────
+function updateTimer(){
+  // pas affiché en continu, seulement dans settings
+}
+function updateScore(){
+  document.getElementById('score-display').textContent=score+' '+t('pts');
+  document.getElementById('moves-display').textContent=moves+' '+t('moves');
+  updateStatsUI();
+}
+
+// ─── LANGUE AIDE ──────────────────────────────────────────────────
+let uiLang = localStorage.getItem('solitaire_lang')||'fr';
+let helpLang = uiLang;
+
+const UI = {
+  fr:{
+    pts:'pts', moves:'coups',
+    tabNew:'Nouvelle', tabQuit:'Abandon', tabUndo:'Annuler',
+    tabHint:'Hint', tabApps:'Mes apps', tabSettings:'Réglages',
+    settingsTitle:'⚙ Réglages', helpTitle:'? Aide', appsTitle:'📱 Mes apps',
+    myApps:'Mes apps', draw:'Tirage', card1:'1 carte', card3:'3 cartes',
+    splashOn:'Activé', splashOff:'Désactivé',
+    statPlayed:'Parties jouées', statWon:'Parties gagnées',
+    statBest:'Meilleur score', statTime:'Meilleur temps',
+    resetBtn:'🗑 Remettre les scores à zéro',
+    winTitle:'Bravo !', winScore:'Score',
+    confirmNew:'Nouvelle partie ?', confirmNewMsg:'La partie en cours sera perdue.',
+    confirmQuit:'Abandonner ?', confirmQuitMsg:'La partie sera comptée comme perdue.',
+    confirmYes:'Oui', confirmYesQuit:'Abandonner', confirmNo:'Non'
+  },
+  en:{
+    pts:'pts', moves:'moves',
+    tabNew:'New', tabQuit:'Quit', tabUndo:'Undo',
+    tabHint:'Hint', tabApps:'My apps', tabSettings:'Settings',
+    settingsTitle:'⚙ Settings', helpTitle:'? Help', appsTitle:'📱 My apps',
+    myApps:'My apps', draw:'Draw', card1:'1 card', card3:'3 cards',
+    splashOn:'On', splashOff:'Off',
+    statPlayed:'Games played', statWon:'Games won',
+    statBest:'Best score', statTime:'Best time',
+    resetBtn:'🗑 Reset scores',
+    winTitle:'Well done!', winScore:'Score',
+    confirmNew:'New game?', confirmNewMsg:'Current game will be lost.',
+    confirmQuit:'Quit game?', confirmQuitMsg:'This game will count as lost.',
+    confirmYes:'Yes', confirmYesQuit:'Quit', confirmNo:'No'
+  }
+};
+
+function t(key){ return (UI[uiLang]&&UI[uiLang][key])||UI.fr[key]||key; }
+
+function toggleLang(){
+  uiLang = uiLang==='fr' ? 'en' : 'fr';
+  localStorage.setItem('solitaire_lang', uiLang);
+  applyLang();
+}
+
+function applyLang(){
+  const L = UI[uiLang];
+  // Drapeau : montre la langue ACTUELLE (pas la cible)
+  const fl = document.getElementById('lang-flag');
+  if(fl) fl.textContent = uiLang==='fr' ? '🇫🇷' : '🇬🇧';
+  // Score
+  updateScore();
+  // Tabbar
+  const tb = {
+    'tb-new':L.tabNew,'tb-quit':L.tabQuit,'tb-undo':L.tabUndo,
+    'tb-help':L.tabHint,'tb-apps':L.tabApps,'tb-settings':L.tabSettings
+  };
+  Object.entries(tb).forEach(([id,txt])=>{ const el=document.getElementById(id); if(el) el.textContent=txt; });
+  // Settings
+  const sp = document.querySelector('#settings-panel .panel-title');
+  if(sp) sp.textContent=L.settingsTitle;
+  const ids = {
+    'lbl-myapps':L.myApps,'lbl-draw':L.draw,
+    'btn-draw1':L.card1,'btn-draw3':L.card3,
+    'btn-splash-on':L.splashOn,'btn-splash-off':L.splashOff,
+    'lbl-played':L.statPlayed,'lbl-won':L.statWon,
+    'lbl-best':L.statBest,'lbl-time':L.statTime,
+    'btn-reset':L.resetBtn
+  };
+  Object.entries(ids).forEach(([id,txt])=>{ const el=document.getElementById(id); if(el) el.textContent=txt; });
+  // Help
+  const hp = document.querySelector('#help-panel .panel-title');
+  if(hp) hp.textContent=L.helpTitle;
+  helpLang = uiLang;
+  if(document.getElementById('help-panel').classList.contains('show')) renderHelp();
+  // Apps panel
+  const ap = document.querySelector('#apps-panel .panel-title');
+  if(ap) ap.textContent=L.appsTitle;
+  // Win overlay
+  const wt=document.getElementById('win-title');
+  if(wt) wt.textContent=L.winTitle;
+}
+
+const HELP = {
+  fr:{
+    title:'? Aide',
+    sections:[
+      {h:'But du jeu', p:"Déplacer toutes les cartes vers les 4 fondations, de l'As au Roi, par couleur."},
+      {h:'Le tableau', p:"7 colonnes. Poser une carte sur une carte de couleur opposée d'un rang supérieur (ex : ♥7 sur ♠8)."},
+      {h:'Les fondations', p:"Commencer par l'As, monter chaque couleur jusqu'au Roi."},
+      {h:'La pioche', p:'Taper le tas face cachée pour retourner 1 ou 3 cartes. Quand vide, taper ↺ pour recycler la défausse.'},
+      {h:'Colonnes vides', p:'Seul un Roi peut être posé sur une colonne vide.'},
+      {h:'Déplacer un tas', p:'Taper la carte du bas du tas (liseré doré), puis taper la destination. Ou glisser-déposer.'},
+      {h:'Double-tap', p:"Double-taper la carte du dessus pour l'envoyer automatiquement en fondation."},
+      {h:'Annuler', p:'Le bouton ↩ annule le dernier coup (50 niveaux max).'},
+      {h:'Score', p:'+5 pts : pioche. +10 pts : retourner une carte cachée. +15 pts : fondation. −10 pts : hint. −100 pts : recycler.'},
+    ]
+  },
+  en:{
+    title:'? Help',
+    sections:[
+      {h:'Goal', p:'Move all cards to the 4 foundations (♠ ♥ ♦ ♣), from Ace to King, by suit.'},
+      {h:'The tableau', p:'7 columns. Place a card on a card of opposite color and one rank higher (e.g. ♥7 on ♠8).'},
+      {h:'Foundations', p:'Start with the Ace. Build each suit from A to King.'},
+      {h:'The stock', p:'Tap the face-down pile to draw 1 or 3 cards. When empty, tap ↺ to recycle the waste.'},
+      {h:'Empty columns', p:'Only a King can be placed on an empty column.'},
+      {h:'Moving a stack', p:'Tap the bottom card of the stack (gold outline), then tap the destination. Or drag and drop.'},
+      {h:'Double-tap', p:'Double-tap the top card of a column to send it automatically to a foundation.'},
+      {h:'Undo', p:'The ↩ button undoes the last move (up to 50 levels).'},
+      {h:'Score', p:'+5 pts: draw. +10 pts: flip hidden card. +15 pts: foundation. −10 pts: hint. −100 pts: recycle waste.'},
+    ]
+  }
+};
+
+function openHelp(){
+  clearAppSplash();
+  renderHelp();
+  document.getElementById('help-panel').classList.add('show');
+}
+function setHelpLang(l){
+  helpLang=l;
+  document.getElementById('help-fr').classList.toggle('active',l==='fr');
+  document.getElementById('help-en').classList.toggle('active',l==='en');
+  renderHelp();
+}
+function renderHelp(){
+  const d=HELP[helpLang];
+  document.getElementById('help-title').textContent=d.title;
+  document.getElementById('help-content').innerHTML=d.sections.map(s=>
+    `<div class="help-section"><div class="help-h">${s.h}</div><div class="help-p">${s.p}</div></div>`
+  ).join('');
+}
+
+// ─── MES APPS ─────────────────────────────────────────────────────
+const APPS = [
+  {name:'Solitaire',          id:''},// cette app
+  {name:'Tuiles Numériques',  id:''},// à compléter
+  {name:'Hôtels RoofTop',     id:'6763507194'},
+  {name:'Ponts du Monde',     id:'6762618424'},
+  {name:'Paquebots',          id:'6763076110'},
+  {name:'Avions de Légende',  id:'6763069304'},
+  {name:'Voitures de Légende',id:'6763071567'},
+  {name:'Flip Board',         id:'6762077646'},
+  {name:'Trains Mythiques',   id:'6762632868'},
+  {name:'Châteaux Loire',     id:'6762823383'},
+  {name:'Mers & Océans',      id:'6762598304'},
+  {name:'Détroits',           id:'6762594201'},
+  {name:'ColorCodeMind',      id:'6762558969'},
+  {name:'Lexigo',             id:'6762552826'},
+  {name:'Conquêtes Sociales', id:'6762542395'},
+  {name:'Dynasties Chinoises',id:'6762522136'},
+  {name:'Dynasties Russes',   id:'6762452564'},
+  {name:'États-Unis',         id:'6762370541'},
+  {name:'Bataille Navale',    id:'6762091681'},
+  {name:'Familles Royales',   id:'6762098486'},
+  {name:'Leaders Européens',  id:'6762263227'},
+  {name:'Pays UE',            id:'6762346365'},
+  {name:'Présidents USA',     id:'6762256169'},
+  {name:'Dames Checkers',     id:'6762076518'},
+  {name:'Comédie Française',  id:'6761993002'},
+  {name:'Institut de France', id:'6761769529'},
+  {name:'Présidents FR',      id:'6761324444'},
+  {name:'Saint-Denis',        id:'6761709149'},
+  {name:'Arbres de France',   id:'6761685637'},
+  {name:'Sénat Paris',        id:'6761363063'},
+  {name:'Compositeurs',       id:'6761656628'},
+  {name:'Maréchaux Napoléon', id:'6761374601'},
+  {name:'Rois de France',     id:'6761322546'},
+  {name:'Assemblée Paris',    id:'6761361079'},
+  {name:'Panthéon Paris',     id:'6761335268'},
+  {name:'Belote Calc',        id:'1483084001'},
+  {name:'Cimetières Paris',   id:'6760751055'},
+  {name:'Tarots Calc',        id:'1481989301'},
+  {name:'Académie française', id:'6761334922'},
+  {name:'Scènes Paris',       id:'6761293938'},
+  {name:'MediSafe',           id:'6761271324'},
+  {name:'MesRestaurants',     id:'6760617965'},
+  {name:'Cave Manager',       id:'6760126279'},
+  {name:'Musées Paris',       id:'6760890465'},
+  {name:'Théâtres Paris',     id:'6760929391'},
+  {name:'FreshFood Manager',  id:'6759219383'},
+  {name:'Toi ou Moi',        id:'1475884625'},
+  {name:'Capitales Europe',   id:'6761421276'},
+  {name:'Iconic Covers',      id:'6762006105'},
+  {name:'Auteurs de BD',      id:'6767135193'},
+  {name:'Hist. Informatique', id:'6766260978'},
+  {name:'Micro-Informatique', id:'6766261703'},
+  {name:'Institutions Mondiales',id:'6767492967'},
+  {name:'Machines Légendaires',id:'6767273597'},
+  {name:"Îles du Monde",      id:'6767810270'},
+  {name:'Explorateurs',       id:'6768003416'},
+  {name:'Peintres Célèbres',  id:'6768068634'},
+  {name:"Légion d'Honneur",  id:'6768320574'},
+  {name:'Dynasties Royales',  id:'6762208827'},
+];
+function openApps(){
+  clearAppSplash();
+  const grid=document.getElementById('apps-grid');
+  if(grid.childElementCount>0){document.getElementById('apps-panel').classList.add('show');return;}
+  APPS.filter(a=>a.id).forEach(a=>{
+    const item=document.createElement('div');
+    item.className='apps-grid-item';
+    item.onclick=()=>window.open('https://apps.apple.com/app/id'+a.id,'_system');
+    const img=document.createElement('img');
+    img.alt=a.name;
+    const numId=Number(a.id);
+    window['itcb'+numId]=function(d){if(d.results&&d.results[0])img.src=d.results[0].artworkUrl60};
+    const s=document.createElement('script');
+    s.src='https://itunes.apple.com/lookup?id='+numId+'&callback=itcb'+numId;
+    document.body.appendChild(s);
+    const lbl=document.createElement('span');
+    lbl.textContent=a.name;
+    item.appendChild(img);item.appendChild(lbl);
+    grid.appendChild(item);
+  });
+  document.getElementById('apps-panel').classList.add('show');
+}
+
+// ─── CONFIRM NOUVELLE PARTIE / ABANDON ────────────────────────────
+let confirmAction = null;
+function confirmNewGame(){
+  clearAppSplash();
+  confirmAction='new';
+  document.getElementById('confirm-icon').textContent='↺';
+  document.getElementById('confirm-title').textContent=t('confirmNew');
+  document.getElementById('confirm-msg').textContent=t('confirmNewMsg');
+  document.getElementById('confirm-yes').textContent=t('confirmYes');
+  document.getElementById('confirm-overlay').classList.add('show');
+}
+function confirmQuit(){
+  clearAppSplash();
+  confirmAction='quit';
+  document.getElementById('confirm-icon').textContent='🏳';
+  document.getElementById('confirm-title').textContent=t('confirmQuit');
+  document.getElementById('confirm-msg').textContent=t('confirmQuitMsg');
+  document.getElementById('confirm-yes').textContent=t('confirmYesQuit');
+  document.getElementById('confirm-overlay').classList.add('show');
+}
+function confirmYes(){
+  closeOverlay('confirm-overlay');
+  if(confirmAction==='new') newGame();
+  else if(confirmAction==='quit'){stats.played++;savePrefs();newGame();}
+  confirmAction=null;
+}
+
+// ─── PANELS ───────────────────────────────────────────────────────
+function closePanel(id){document.getElementById(id).classList.remove('show');}
+
+// ─── SETTINGS ─────────────────────────────────────────────────────
+function openSettings(){
+  clearAppSplash();
+  updateStatsUI();
+  document.getElementById('settings-panel').classList.add('show');
+}
+function setDraw(n){
+  drawCount=n;
+  document.getElementById('btn-draw1').classList.toggle('active',n===1);
+  document.getElementById('btn-draw3').classList.toggle('active',n===3);
+  savePrefs();
+}
+function resetStats(){
+  if(!confirm('Remettre tous les scores à zéro ?')) return;
+  stats={played:0,won:0,bestScore:null,bestTime:null};
+  savePrefs();
+  updateStatsUI();
+}
+function setSplash(val){
+  showSplash = val;
+  document.getElementById('btn-splash-on').classList.toggle('active', val);
+  document.getElementById('btn-splash-off').classList.toggle('active', !val);
+  savePrefs();
+}
+function updateSettingsUI(){
+  document.getElementById('btn-draw1').classList.toggle('active',drawCount===1);
+  document.getElementById('btn-draw3').classList.toggle('active',drawCount===3);
+  document.getElementById('btn-splash-on').classList.toggle('active', showSplash);
+  document.getElementById('btn-splash-off').classList.toggle('active', !showSplash);
+}
+function updateStatsUI(){
+  document.getElementById('st-played').textContent=stats.played;
+  document.getElementById('st-won').textContent=stats.won;
+  document.getElementById('st-best').textContent=stats.bestScore||'—';
+  document.getElementById('st-time').textContent=stats.bestTime?formatTime(stats.bestTime):'—';
+}
+function formatTime(s){
+  const m=Math.floor(s/60);
+  return m+'m'+(s%60<10?'0':'')+(s%60)+'s';
+}
+
+// ─── DRAG & DROP (TOUCH + MOUSE) ──────────────────────────────────
+let drag={active:false,els:[],cards:[],source:null,colIdx:null,cardIdx:null,startX:0,startY:0,offX:0,offY:0};
+
+function setupDragCard(el,source,colIdx,cardIdx,cards){
+  el.addEventListener('touchstart',e=>{
+    // Détecter double-tap sur touchstart avant que drag ne commence
+    const zone = source==='waste' ? 'waste' : 'col-'+colIdx;
+    const now = Date.now();
+    if(lastTap.zone===zone && now-lastTap.time<350){
+      // Double-tap : ne pas démarrer le drag, traiter directement
+      e.preventDefault();
+      e.stopPropagation();
+      lastTap={zone:null,time:0};
+      if(source==='waste'){
+        if(state.waste.length>0) doubleTapCard(state.waste[state.waste.length-1],-1);
+      } else {
+        const stack=state.tableau[colIdx];
+        if(stack.length>0&&stack[stack.length-1].faceUp)
+          doubleTapCard(stack[stack.length-1],colIdx);
+      }
+      return; // Ne pas démarrer le drag
+    }
+    lastTap={zone,time:now};
+    onDragStart(e,source,colIdx,cardIdx,cards);
+  },{passive:false});
+  el.addEventListener('mousedown',e=>onDragStart(e,source,colIdx,cardIdx,cards));
+}
+
+function onDragStart(e,source,colIdx,cardIdx,cards){
+  if(e.type==='mousedown'&&e.button!==0) return;
+  e.stopPropagation();
+  const pt=getPoint(e);
+  const el=e.currentTarget;
+  const rect=el.getBoundingClientRect();
+  drag.active=true;
+  drag.source=source;
+  drag.colIdx=colIdx;
+  drag.cardIdx=cardIdx;
+  drag.cards=cards;
+  drag.offX=pt.x-rect.left;
+  drag.offY=pt.y-rect.top;
+  drag.startX=pt.x;
+  drag.startY=pt.y;
+
+  // construire ghost
+  const ghost=document.getElementById('drag-ghost');
+  ghost.innerHTML='';
+  ghost.style.display='flex';
+  ghost.style.flexDirection='column';
+  ghost.style.gap='0';
+
+  const cardW=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-w'));
+  const cardH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-h'));
+  const offset=20;
+
+  cards.forEach((c,i)=>{
+    const ge=createCardEl(c,c.faceUp);
+    ge.style.position='absolute';
+    ge.style.top=(i*offset)+'px';
+    ge.style.left='0';
+    ge.style.width=cardW+'px';
+    ge.style.height=cardH+'px';
+    ghost.appendChild(ge);
+  });
+  const totalH=cardH+(cards.length-1)*offset;
+  ghost.style.width=cardW+'px';
+  ghost.style.height=totalH+'px';
+  ghost.style.position='fixed';
+  ghost.style.pointerEvents='none';
+  ghost.style.zIndex='2000';
+  ghost.style.left=(pt.x-drag.offX)+'px';
+  ghost.style.top=(pt.y-drag.offY)+'px';
+
+  if(e.type==='touchstart'){
+    window.addEventListener('touchmove',onDragMove,{passive:false});
+    window.addEventListener('touchend',onDragEnd);
+  } else {
+    window.addEventListener('mousemove',onDragMove);
+    window.addEventListener('mouseup',onDragEnd);
+  }
+  if(e.cancelable) e.preventDefault();
+}
+
+function onDragMove(e){
+  if(!drag.active) return;
+  if(e.cancelable) e.preventDefault();
+  const pt=getPoint(e);
+  const ghost=document.getElementById('drag-ghost');
+  ghost.style.left=(pt.x-drag.offX)+'px';
+  ghost.style.top=(pt.y-drag.offY)+'px';
+}
+
+function onDragEnd(e){
+  if(!drag.active) return;
+  const pt=getPoint(e);
+  const ghost=document.getElementById('drag-ghost');
+  ghost.style.display='none';
+  drag.active=false;
+
+  window.removeEventListener('touchmove',onDragMove);
+  window.removeEventListener('touchend',onDragEnd);
+  window.removeEventListener('mousemove',onDragMove);
+  window.removeEventListener('mouseup',onDragEnd);
+
+  const cardW=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-w'));
+  const cardH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-h'));
+
+  // détecter cible
+  const cx=pt.x, cy=pt.y;
+
+  // vérifier fondations
+  for(let f=0;f<4;f++){
+    const z=document.getElementById('zone-f'+f);
+    const r=z.getBoundingClientRect();
+    if(cx>=r.left&&cx<=r.right&&cy>=r.top&&cy<=r.bottom){
+      if(drag.cards.length===1){
+        const c=drag.cards[0];
+        if(canPlaceFoundation(c,f)){
+          saveHistory();
+          state.foundations[f].push(c);
+          removeDragSource();
+          score+=15;moves++;
+          selected=null;
+          flipTopCards();
+          clearAppSplash();render();updateScore();showAppSplash();checkWin();
+          return;
+        }
+      }
+      return;
+    }
+  }
+
+  // vérifier colonnes
+  for(let col=0;col<7;col++){
+    const z=document.getElementById('col-'+col);
+    const r=z.getBoundingClientRect();
+    if(cx>=r.left-5&&cx<=r.right+5&&cy>=r.top&&cy<=r.bottom+50){
+      if(canPlaceTableau(drag.cards[0],col)){
+        saveHistory();
+        removeDragSource();
+        state.tableau[col].push(...drag.cards);
+        score+=5;moves++;
+        selected=null;
+        flipTopCards();
+        render();updateScore();
+        return;
+      }
+      return;
+    }
+  }
+  selected=null;
+  render();
+}
+
+function removeDragSource(){
+  if(drag.source==='waste'){
+    state.waste.pop();
+  } else if(drag.source==='col'){
+    state.tableau[drag.colIdx].splice(drag.cardIdx);
+    flipTopCards();
+  }
+}
+
+function getPoint(e){
+  if(e.touches&&e.touches.length>0) return {x:e.touches[0].clientX,y:e.touches[0].clientY};
+  if(e.changedTouches&&e.changedTouches.length>0) return {x:e.changedTouches[0].clientX,y:e.changedTouches[0].clientY};
+  return {x:e.clientX,y:e.clientY};
+}
+
+// ─── DROP ZONES ───────────────────────────────────────────────────
+function setupDrop(){
+  // pioche : un seul listener
+  document.getElementById('zone-stock').addEventListener('click', drawCard);
+  // fondations : clic pour déposer la sélection
+  for(let f=0;f<4;f++){
+    document.getElementById('zone-f'+f).addEventListener('click',()=>{
+      if(selected&&selected.cards.length===1){
+        const c=selected.cards[0];
+        if(canPlaceFoundation(c,f)){
+          saveHistory();
+          state.foundations[f].push(c);
+          removeSelected();
+          selected=null;
+          score+=15;moves++;
+          clearAppSplash();render();updateScore();showAppSplash();checkWin();
+        }
+      }
+    });
+  }
+}
+
+// Double-tap sur carte du dessus → auto-fondation
+// Double-tap détecté manuellement (iOS ne supporte pas dblclick fiablement)
+// ─── HINT ────────────────────────────────────────────────────────
+let hintTimeout = null;
+
+function showHint(){
+  clearHint();
+  score = Math.max(0, score - 10);
+  updateScore();
+  const move = findBestMove();
+  if(!move){
+    // Pas de coup trouvé — clignoter la pioche
+    const stockEl = document.getElementById('zone-stock');
+    stockEl.style.boxShadow = '0 0 0 2px #4fc3f7, 0 0 12px rgba(79,195,247,0.6)';
+    hintTimeout = setTimeout(()=>{ stockEl.style.boxShadow=''; }, 2000);
+    return;
+  }
+  // Surligner la source (bleu) et la destination (vert)
+  if(move.srcEl) move.srcEl.classList.add('hint-src');
+  if(move.dstEl) move.dstEl.classList.add('hint-dst');
+  hintTimeout = setTimeout(clearHint, 2500);
+}
+
+function clearHint(){
+  if(hintTimeout){ clearTimeout(hintTimeout); hintTimeout=null; }
+  document.querySelectorAll('.hint-src,.hint-dst').forEach(e=>{
+    e.classList.remove('hint-src','hint-dst');
+  });
+  document.getElementById('zone-stock').style.boxShadow='';
+}
+
+function findBestMove(){
+  // Priorité 1 : waste → fondation
+  if(state.waste.length>0){
+    const c=state.waste[state.waste.length-1];
+    if(findFoundationFor(c)>=0){
+      const srcEl=document.querySelector('#zone-waste .card');
+      return {srcEl, dstEl:null};
+    }
+  }
+  // Priorité 2 : tableau → fondation (carte du dessus)
+  for(let col=0;col<7;col++){
+    const stack=state.tableau[col];
+    if(stack.length>0&&stack[stack.length-1].faceUp){
+      const c=stack[stack.length-1];
+      const f=findFoundationFor(c);
+      if(f>=0){
+        const srcEl=document.querySelector('#col-'+col+' .card:last-child');
+        const dstEl=document.querySelector('#zone-f'+f);
+        return {srcEl, dstEl};
+      }
+    }
+  }
+  // Priorité 3 : waste → tableau
+  if(state.waste.length>0){
+    const c=state.waste[state.waste.length-1];
+    const destCol=findBestTableauCol(c);
+    if(destCol>=0){
+      const srcEl=document.querySelector('#zone-waste .card');
+      const dstEl=getTopCardEl(destCol);
+      return {srcEl, dstEl};
+    }
+  }
+  // Priorité 4 : tableau → tableau (déplacer un tas utile)
+  for(let col=0;col<7;col++){
+    const stack=state.tableau[col];
+    for(let i=0;i<stack.length;i++){
+      if(!stack[i].faceUp) continue;
+      const c=stack[i];
+      for(let dest=0;dest<7;dest++){
+        if(dest===col) continue;
+        if(canPlaceTableau(c,dest)){
+          // utile si ça révèle une carte cachée ou libère une colonne
+          const revealsHidden = i>0 && !stack[i-1].faceUp;
+          const freesCol = i===0;
+          if(revealsHidden || freesCol){
+            const cards=document.querySelectorAll('#col-'+col+' .card');
+            const srcEl=cards[i]||null;
+            const dstEl=getTopCardEl(dest);
+            return {srcEl, dstEl};
+          }
+        }
+      }
+    }
+  }
+  // Priorité 5 : n'importe quel mouvement tableau→tableau
+  for(let col=0;col<7;col++){
+    const stack=state.tableau[col];
+    if(stack.length>0&&stack[stack.length-1].faceUp){
+      const c=stack[stack.length-1];
+      for(let dest=0;dest<7;dest++){
+        if(dest===col) continue;
+        if(canPlaceTableau(c,dest)){
+          const srcEl=document.querySelector('#col-'+col+' .card:last-child');
+          const dstEl=getTopCardEl(dest);
+          return {srcEl, dstEl};
+        }
+      }
+    }
+  }
+  // Aucun coup : suggérer la pioche
+  return null;
+}
+
+function getTopCardEl(col){
+  const cards=document.querySelectorAll('#col-'+col+' .card');
+  return cards.length>0 ? cards[cards.length-1] : document.getElementById('col-'+col);
+}
+
+// Trouver la meilleure colonne du tableau pour une carte
+function findBestTableauCol(card){
+  // Priorité 1 : colonne qui accepte la carte et dont le dessus est face visible
+  for(let col=0;col<7;col++){
+    const stack=state.tableau[col];
+    if(stack.length>0 && canPlaceTableau(card,col)) return col;
+  }
+  // Priorité 2 : colonne vide pour un Roi
+  if(card.rank==='K'){
+    for(let col=0;col<7;col++){
+      if(state.tableau[col].length===0) return col;
+    }
+  }
+  return -1;
+}
+
+// Double-tap : fondation d'abord, sinon meilleure colonne tableau
+function doubleTapCard(card, sourceCol){
+  // Toujours travailler sur une copie
+  const c = {...card, faceUp:true};
+
+  // Vérifier que la carte est bien au sommet de la source
+  if(sourceCol>=0){
+    const stack=state.tableau[sourceCol];
+    if(stack.length===0||stack[stack.length-1].rank!==c.rank||stack[stack.length-1].suit!==c.suit) return false;
+  } else {
+    if(state.waste.length===0||state.waste[state.waste.length-1].rank!==c.rank||state.waste[state.waste.length-1].suit!==c.suit) return false;
+  }
+
+  // 1. Essayer fondation
+  const f=findFoundationFor(c);
+  if(f>=0){
+    saveHistory();
+    if(sourceCol>=0) state.tableau[sourceCol].pop();
+    else state.waste.pop();
+    state.foundations[f].push(c);
+    score+=15;moves++;
+    selected=null;
+    flipTopCards();
+    clearAppSplash();render();updateScore();showAppSplash();checkWin();
+    return true;
+  }
+  // 2. Essayer tableau (carte seule uniquement)
+  const destCol=findBestTableauCol(c);
+  if(destCol>=0 && (sourceCol<0 || destCol!==sourceCol)){
+    saveHistory();
+    if(sourceCol>=0) state.tableau[sourceCol].pop();
+    else state.waste.pop();
+    state.tableau[destCol].push(c);
+    score+=5;moves++;
+    selected=null;
+    flipTopCards();
+    render();updateScore();
+    return true;
+  }
+  return false;
+}
+
+// Double-tap : détection par zone (col ou waste) plutôt que par élément DOM
+// car render() recrée les éléments entre les deux taps
+let lastTap={zone:null,time:0};
+
+function getTapZone(target){
+  const colEl=target.closest('.col');
+  if(colEl) return 'col-'+colEl.dataset.col;
+  const wasteEl=target.closest('#zone-waste');
+  if(wasteEl) return 'waste';
+  return null;
+}
+
+// Double-tap géré dans setupDragCard sur touchstart
+</script>
+</body>
+</html>
