@@ -51,8 +51,9 @@ html,body{height:100%;overflow:hidden;background:var(--felt)}
   flex:1;
   justify-content:center;
 }
-#score-display{font-size:20px;font-weight:700;color:var(--gold)}
-#moves-display{font-size:17px;color:rgba(201,168,76,0.7)}
+#score-display{font-size:19px;font-weight:700;color:var(--gold)}
+#moves-display{font-size:17px;font-weight:600;color:var(--gold2)}
+#stock-badge{font-size:17px;font-weight:600;color:var(--gold2);background:rgba(0,0,0,0.25);padding:2px 7px;border-radius:8px;border:1px solid rgba(201,168,76,0.3)}
 .btn-icon{
   background:rgba(255,255,255,0.12);
   border:1px solid rgba(201,168,76,0.4);
@@ -81,9 +82,10 @@ html,body{height:100%;overflow:hidden;background:var(--felt)}
   padding:6px 2px;
   cursor:pointer;
   gap:2px;
-  color:rgba(201,168,76,0.5);
+  color:var(--gold2);
   font-family:'Cormorant Garamond',serif;
-  font-size:calc(10px * var(--fs));
+  font-size:11px;
+  font-weight:600;
   border:none;background:none;
   -webkit-tap-highlight-color:transparent;
 }
@@ -448,6 +450,45 @@ html,body{height:100%;overflow:hidden;background:var(--felt)}
   70%{transform:scale(1.15) rotate(3deg)}
   100%{opacity:1;transform:scale(1) rotate(0deg)}
 }
+@keyframes orbit{
+  0%{transform:rotate(var(--start-angle)) translateX(var(--r)) rotate(calc(-1 * var(--start-angle)))}
+  100%{transform:rotate(calc(var(--start-angle) + 360deg)) translateX(var(--r)) rotate(calc(-1 * (var(--start-angle) + 360deg)))}
+}
+@keyframes orbit-icon-in{
+  0%{opacity:0;transform:scale(0)}
+  100%{opacity:1;transform:scale(1)}
+}
+#orbit-container{
+  position:fixed;
+  pointer-events:none;
+  z-index:200;
+  display:none;
+}
+#orbit-container.show{display:block}
+.orbit-icon{
+  position:absolute;
+  width:48px;height:48px;
+  margin:-24px 0 0 -24px;
+  animation:orbit var(--duration) linear infinite;
+  transform-origin:0 0;
+}
+.orbit-icon img{
+  width:48px;height:48px;
+  border-radius:11px;
+  box-shadow:0 3px 10px rgba(0,0,0,0.5);
+  animation:orbit-icon-in 0.4s ease-out forwards;
+  display:block;
+}
+
+@keyframes fly-to-foundation{
+  0%{transform:translate(0,0) scale(1);opacity:1}
+  100%{transform:translate(var(--tx),var(--ty)) scale(0.85);opacity:0}
+}
+.card.flying{
+  animation:fly-to-foundation 0.35s ease-in forwards;
+  pointer-events:none;
+  z-index:500 !important;
+}
 
 /* DRAG GHOST */
 #drag-ghost{
@@ -466,9 +507,9 @@ html,body{height:100%;overflow:hidden;background:var(--felt)}
     <div class="header-score">
       <span id="score-display">0 pts</span>
       <span id="moves-display">0 coups</span>
-      <span id="stock-badge" style="font-size:15px;color:rgba(201,168,76,0.5)">🂠 24</span>
+      <span id="stock-badge">🂠 24</span>
     </div>
-    <div id="lang-flag" onclick="toggleLang()" style="font-size:24px;cursor:pointer;padding:4px 6px;line-height:1;flex-shrink:0;min-width:36px;text-align:center">🇬🇧</div>
+    <div id="lang-flag" onclick="toggleLang()" style="font-size:24px;cursor:pointer;padding:4px 6px;line-height:1;flex-shrink:0;min-width:36px;text-align:center">🇫🇷</div>
   </div>
 
   <div class="main" id="main-area">
@@ -500,11 +541,7 @@ html,body{height:100%;overflow:hidden;background:var(--felt)}
       <span class="tab-icon">↺</span>
       <span id="tb-new">Nouvelle</span>
     </button>
-    <button class="tab-btn" onclick="confirmQuit()">
-      <span class="tab-icon">🏳</span>
-      <span id="tb-quit">Abandon</span>
-    </button>
-    <button class="tab-btn" onclick="undoMove()">
+<button class="tab-btn" onclick="undoMove()">
       <span class="tab-icon">↩</span>
       <span id="tb-undo">Annuler</span>
     </button>
@@ -526,6 +563,9 @@ html,body{height:100%;overflow:hidden;background:var(--felt)}
     </button>
   </div>
 </div>
+
+<!-- Orbit icons -->
+<div id="orbit-container"></div>
 
 <!-- Drag ghost -->
 <div id="drag-ghost"></div>
@@ -636,7 +676,12 @@ window.addEventListener('load', ()=>{
   initCardSize();
   preloadIcons();
   applyLang();
-  newGame();
+  if(loadGameState()){
+    render();
+    updateScore();
+  } else {
+    newGame();
+  }
   setupDrop();
 });
 
@@ -654,6 +699,26 @@ function loadPrefs(){
 function savePrefs(){
   localStorage.setItem('solitaire_prefs',JSON.stringify({draw:drawCount,splash:showSplash}));
   localStorage.setItem('solitaire_stats',JSON.stringify(stats));
+}
+function saveGameState(){
+  if(!state||!state.stock) return;
+  try {
+    localStorage.setItem('solitaire_game',JSON.stringify({state,score,moves,startTime:startTime||Date.now()}));
+  } catch(e){}
+}
+function loadGameState(){
+  try {
+    const g=localStorage.getItem('solitaire_game');
+    if(!g) return false;
+    const o=JSON.parse(g);
+    if(!o.state||!o.state.stock) return false;
+    state=o.state;score=o.score||0;moves=o.moves||0;
+    startTime=o.startTime||Date.now();
+    return true;
+  } catch(e){ return false; }
+}
+function clearGameState(){
+  localStorage.removeItem('solitaire_game');
 }
 
 function isIPad(){
@@ -702,6 +767,9 @@ function newGame(){
     tableau:tableau
   };
 
+  clearGameState();
+  stopOrbit();
+  autoCompleteRunning=false;
   startTime = Date.now();
   timerInterval = setInterval(updateTimer,1000);
   stats.played++;
@@ -812,7 +880,11 @@ function renderFoundations(){
       const el=createCardEl(c,true);
       el.style.position='absolute';
       el.style.top='0';el.style.left='0';
-      el.onclick=()=>moveToFoundationSelected(f);
+      if(selected&&selected.source==='found'&&selected.foundIdx===f){
+        el.classList.add('selected');
+      }
+      el.onclick=(e)=>{e.stopPropagation();selectFromFoundation(f);};
+      setupDragCard(el,'found',f,0,[{...c}]);
       z.appendChild(el);
     }
   }
@@ -916,16 +988,39 @@ function selectTableau(col,idx){
   const stack=state.tableau[col];
   if(!stack[idx].faceUp) return;
   if(selected){
-    // tenter de déposer
+    // Désélectionner si on retape la même carte
     if(selected.source==='col'&&selected.colIdx===col&&selected.cardIdx===idx){
       selected=null;render();return;
     }
-    if(tryDropOnColumn(col)){return;}
-    // sinon reselectionner
+    // Depuis fondation : toujours tenter de déposer sur cette colonne
+    if(selected.source==='found'){
+      if(tryDropOnColumn(col)){return;}
+      // Mouvement impossible : désélectionner la fondation et sélectionner la carte tappée
+      selected=null;
+    } else {
+      if(tryDropOnColumn(col)){return;}
+    }
   }
   selected={source:'col',colIdx:col,cardIdx:idx,cards:stack.slice(idx).map(c=>({...c}))};
   render();
   if(selected.cards.length===1) tryAutoMove();
+}
+
+function selectFromFoundation(f){
+  const stack=state.foundations[f];
+  if(stack.length===0) return;
+  // Désélectionner si déjà sélectionnée
+  if(selected&&selected.source==='found'&&selected.foundIdx===f){
+    selected=null; render(); return;
+  }
+  // Si sélection en cours depuis autre source → déposer sur fondation
+  if(selected&&selected.source!=='found'){
+    moveToFoundationSelected(f); return;
+  }
+  // Sélectionner la carte du dessus
+  const c={...stack[stack.length-1],faceUp:true};
+  selected={source:'found',foundIdx:f,cards:[c]};
+  render();
 }
 
 function moveToFoundationSelected(f){
@@ -974,6 +1069,8 @@ function removeSelected(){
     state.waste.pop();
   } else if(selected.source==='col'){
     state.tableau[selected.colIdx].splice(selected.cardIdx);
+  } else if(selected.source==='found'){
+    state.foundations[selected.foundIdx].pop();
   }
   flipTopCards();
 }
@@ -1184,10 +1281,131 @@ function clearAppSplash(){
 }
 
 // ─── VICTOIRE ─────────────────────────────────────────────────────
+// ─── ORBIT ICONES VICTOIRE ───────────────────────────────────────
+function startOrbit(){
+  const apps = APPS.filter(a=>a.id);
+  if(!apps.length) return;
+  const container = document.getElementById('orbit-container');
+  container.innerHTML='';
+
+  // Centrer sur l'écran
+  const cx = window.innerWidth/2;
+  const cy = window.innerHeight/2;
+  container.style.left = cx+'px';
+  container.style.top = cy+'px';
+  container.style.width = '0';
+  container.style.height = '0';
+
+  const count = Math.min(12, apps.length);
+  const radius = Math.min(cx, cy) * 0.55;
+  const duration = 6; // secondes pour un tour
+
+  // Mélanger et prendre count apps
+  const pool = [...apps].sort(()=>Math.random()-0.5).slice(0, count);
+
+  pool.forEach((app, i)=>{
+    const angle = (i / count) * 360;
+    const delay = i * 0.15;
+    const iconEl = document.createElement('div');
+    iconEl.className = 'orbit-icon';
+    iconEl.style.setProperty('--start-angle', angle+'deg');
+    iconEl.style.setProperty('--r', radius+'px');
+    iconEl.style.setProperty('--duration', duration+'s');
+    iconEl.style.animationDelay = delay+'s';
+    iconEl.style.left = '0px';
+    iconEl.style.top = '0px';
+
+    const img = document.createElement('img');
+    img.alt = app.name;
+    if(iconCache[app.id]){
+      img.src = iconCache[app.id];
+    } else {
+      img.style.background='rgba(201,168,76,0.3)';
+      const cb='itcb_orb_'+app.id;
+      window[cb]=d=>{if(d.results&&d.results[0])img.src=d.results[0].artworkUrl60;};
+      const s=document.createElement('script');
+      s.src='https://itunes.apple.com/lookup?id='+app.id+'&callback='+cb;
+      document.body.appendChild(s);
+    }
+    iconEl.appendChild(img);
+    container.appendChild(iconEl);
+  });
+  container.classList.add('show');
+}
+
+function stopOrbit(){
+  const container = document.getElementById('orbit-container');
+  if(container){container.classList.remove('show');container.innerHTML='';}
+}
+
+// ─── AUTO-COMPLETE ───────────────────────────────────────────────
+let autoCompleteRunning = false;
+
+function canAutoComplete(){
+  if(state.stock.length>0||state.waste.length>0) return false;
+  return state.tableau.every(col=>col.every(c=>c.faceUp));
+}
+
+function startAutoComplete(){
+  if(autoCompleteRunning) return;
+  autoCompleteRunning=true;
+  startOrbit();
+  autoCompleteStep();
+}
+
+function autoCompleteStep(){
+  if(!autoCompleteRunning) return;
+  // Trouver une carte à monter en fondation
+  for(let col=0;col<7;col++){
+    const stack=state.tableau[col];
+    if(stack.length===0) continue;
+    const c=stack[stack.length-1];
+    const f=findFoundationFor(c);
+    if(f>=0){
+      animateFlyToFoundation(col, f, c, ()=>{
+        state.tableau[col].pop();
+        state.foundations[f].push({...c});
+        score+=15;
+        render();
+        updateScore();
+        if(checkWin()) return;
+        setTimeout(autoCompleteStep, 80);
+      });
+      return;
+    }
+  }
+  // Aucun coup direct → essayer dans un autre ordre
+  autoCompleteRunning=false;
+}
+
+function animateFlyToFoundation(col, f, card, cb){
+  // Position source : dernière carte de la colonne
+  const colEl=document.getElementById('col-'+col);
+  const cards=Array.from(colEl.querySelectorAll('.card:not(.flying)'));
+  const srcEl=cards[cards.length-1];
+  if(!srcEl){cb();return;}
+  const srcR=srcEl.getBoundingClientRect();
+
+  // Position destination : fondation
+  const dstEl=document.getElementById('zone-f'+f);
+  const dstR=dstEl.getBoundingClientRect();
+
+  const tx=dstR.left+dstR.width/2 - (srcR.left+srcR.width/2);
+  const ty=dstR.top+dstR.height/2 - (srcR.top+srcR.height/2);
+
+  srcEl.style.setProperty('--tx', tx+'px');
+  srcEl.style.setProperty('--ty', ty+'px');
+  srcEl.classList.add('flying');
+  srcEl.addEventListener('animationend', ()=>{ cb(); }, {once:true});
+}
+
 function checkWin(){
   const won=state.foundations.every(f=>f.length===13);
   if(won){
+    autoCompleteRunning=false;
+    stopOrbit();
     clearInterval(timerInterval);
+    clearGameState();
     const elapsed=Math.floor((Date.now()-startTime)/1000);
     score+=Math.max(0,300-elapsed)*2;
     stats.won++;
@@ -1197,7 +1415,13 @@ function checkWin(){
     updateScore();
     document.getElementById('win-score').textContent=t('winScore')+' : '+score+' '+t('pts')+' — '+moves+' '+t('moves');
     document.getElementById('win-overlay').classList.add('show');
+    return true;
   }
+  // Déclencher auto-complete si possible
+  if(!autoCompleteRunning && canAutoComplete()){
+    setTimeout(startAutoComplete, 400);
+  }
+  return false;
 }
 function closeOverlay(id){
   id=id||'win-overlay';
@@ -1212,6 +1436,7 @@ function updateScore(){
   document.getElementById('score-display').textContent=score+' '+t('pts');
   document.getElementById('moves-display').textContent=moves+' '+t('moves');
   updateStatsUI();
+  saveGameState();
 }
 
 // ─── LANGUE AIDE ──────────────────────────────────────────────────
@@ -1221,7 +1446,7 @@ let helpLang = uiLang;
 const UI = {
   fr:{
     pts:'pts', moves:'coups',
-    tabNew:'Nouvelle', tabQuit:'Abandon', tabUndo:'Annuler',
+    tabNew:'Nouvelle', tabUndo:'Annuler',
     tabHint:'Hint', tabApps:'Mes apps', tabSettings:'Réglages',
     settingsTitle:'⚙ Réglages', helpTitle:'? Aide', appsTitle:'📱 Mes apps',
     myApps:'Mes apps', draw:'Tirage', card1:'1 carte', card3:'3 cartes',
@@ -1231,12 +1456,11 @@ const UI = {
     resetBtn:'🗑 Remettre les scores à zéro',
     winTitle:'Bravo !', winScore:'Score',
     confirmNew:'Nouvelle partie ?', confirmNewMsg:'La partie en cours sera perdue.',
-    confirmQuit:'Abandonner ?', confirmQuitMsg:'La partie sera comptée comme perdue.',
     confirmYes:'Oui', confirmYesQuit:'Abandonner', confirmNo:'Non'
   },
   en:{
     pts:'pts', moves:'moves',
-    tabNew:'New', tabQuit:'Quit', tabUndo:'Undo',
+    tabNew:'New', tabUndo:'Undo',
     tabHint:'Hint', tabApps:'My apps', tabSettings:'Settings',
     settingsTitle:'⚙ Settings', helpTitle:'? Help', appsTitle:'📱 My apps',
     myApps:'My apps', draw:'Draw', card1:'1 card', card3:'3 cards',
@@ -1246,7 +1470,6 @@ const UI = {
     resetBtn:'🗑 Reset scores',
     winTitle:'Well done!', winScore:'Score',
     confirmNew:'New game?', confirmNewMsg:'Current game will be lost.',
-    confirmQuit:'Quit game?', confirmQuitMsg:'This game will count as lost.',
     confirmYes:'Yes', confirmYesQuit:'Quit', confirmNo:'No'
   }
 };
@@ -1264,6 +1487,7 @@ function applyLang(){
   // Drapeau : montre la langue ACTUELLE (pas la cible)
   const fl = document.getElementById('lang-flag');
   if(fl) fl.textContent = uiLang==='fr' ? '🇫🇷' : '🇬🇧';
+  if(fl) fl.title = uiLang==='fr' ? 'Switch to English' : 'Passer en français';
   // Score
   updateScore();
   // Tabbar
@@ -1301,29 +1525,37 @@ const HELP = {
   fr:{
     title:'? Aide',
     sections:[
-      {h:'But du jeu', p:"Déplacer toutes les cartes vers les 4 fondations, de l'As au Roi, par couleur."},
-      {h:'Le tableau', p:"7 colonnes. Poser une carte sur une carte de couleur opposée d'un rang supérieur (ex : ♥7 sur ♠8)."},
-      {h:'Les fondations', p:"Commencer par l'As, monter chaque couleur jusqu'au Roi."},
-      {h:'La pioche', p:'Taper le tas face cachée pour retourner 1 ou 3 cartes. Quand vide, taper ↺ pour recycler la défausse.'},
-      {h:'Colonnes vides', p:'Seul un Roi peut être posé sur une colonne vide.'},
-      {h:'Déplacer un tas', p:'Taper la carte du bas du tas (liseré doré), puis taper la destination. Ou glisser-déposer.'},
-      {h:'Double-tap', p:"Double-taper la carte du dessus pour l'envoyer automatiquement en fondation."},
-      {h:'Annuler', p:'Le bouton ↩ annule le dernier coup (50 niveaux max).'},
-      {h:'Score', p:'+5 pts : pioche. +10 pts : retourner une carte cachée. +15 pts : fondation. −10 pts : hint. −100 pts : recycler.'},
+      {h:'🎯 But du jeu', p:"Déplacer toutes les cartes vers les 4 fondations (♠ ♥ ♦ ♣), de l'As au Roi, par couleur."},
+      {h:'🃏 Le tableau', p:"7 colonnes. Poser une carte sur une carte de couleur opposée d'un rang supérieur (ex : ♥7 sur ♠8)."},
+      {h:'🏛 Les fondations', p:"Commencer par l'As, monter chaque couleur jusqu'au Roi. Tap pour reprendre la dernière carte. Double-tap pour terminer automatiquement quand toutes les cartes sont visibles."},
+      {h:'🂠 La pioche', p:'Taper le tas face cachée pour retourner 1 ou 3 cartes. Quand vide, taper ↺ pour recycler la défausse.'},
+      {h:'👑 Colonnes vides', p:'Seul un Roi (ou un tas commençant par un Roi) peut être posé sur une colonne vide.'},
+      {h:'✋ Déplacer un tas', p:'Taper la carte du bas du tas voulu (liseré doré), puis taper la destination. Ou glisser-déposer. Double-tap pour déplacer automatiquement.'},
+      {h:'👆 Double-tap', p:"Double-taper une carte pour l'envoyer en fondation si possible, sinon sur la meilleure colonne. Fonctionne aussi depuis la défausse."},
+      {h:'↩ Annuler', p:"Annule le dernier coup. Jusqu'à 50 niveaux."},
+      {h:'💡 Hint', p:"Suggère le meilleur coup : la carte source s'illumine en bleu, la destination en vert. Coûte 10 pts."},
+      {h:'↺ Nouvelle partie', p:'Démarre une nouvelle partie. Demande confirmation.'},
+      {h:'📱 Mes apps', p:"Découvrez les autres applications de l'auteur. Tap sur une icône pour ouvrir l'App Store."},
+      {h:'⚙ Réglages', p:'Tirage 1 ou 3 cartes, activation des apps sur le tapis, statistiques et remise à zéro.'},
+      {h:'🏆 Score', p:'+5 pts : pioche. +10 pts : retourner une carte cachée. +15 pts : fondation. −10 pts : hint. −100 pts : recycler la défausse.'},
     ]
   },
   en:{
     title:'? Help',
     sections:[
-      {h:'Goal', p:'Move all cards to the 4 foundations (♠ ♥ ♦ ♣), from Ace to King, by suit.'},
-      {h:'The tableau', p:'7 columns. Place a card on a card of opposite color and one rank higher (e.g. ♥7 on ♠8).'},
-      {h:'Foundations', p:'Start with the Ace. Build each suit from A to King.'},
-      {h:'The stock', p:'Tap the face-down pile to draw 1 or 3 cards. When empty, tap ↺ to recycle the waste.'},
-      {h:'Empty columns', p:'Only a King can be placed on an empty column.'},
-      {h:'Moving a stack', p:'Tap the bottom card of the stack (gold outline), then tap the destination. Or drag and drop.'},
-      {h:'Double-tap', p:'Double-tap the top card of a column to send it automatically to a foundation.'},
-      {h:'Undo', p:'The ↩ button undoes the last move (up to 50 levels).'},
-      {h:'Score', p:'+5 pts: draw. +10 pts: flip hidden card. +15 pts: foundation. −10 pts: hint. −100 pts: recycle waste.'},
+      {h:'🎯 Goal', p:'Move all cards to the 4 foundations (♠ ♥ ♦ ♣), from Ace to King, by suit.'},
+      {h:'🃏 The tableau', p:'7 columns. Place a card on a card of opposite color and one rank higher (e.g. ♥7 on ♠8).'},
+      {h:'🏛 Foundations', p:'Start with the Ace, build each suit up to King. Tap to take back the top card. Double-tap to auto-complete when all cards are face up.'},
+      {h:'🂠 The stock', p:'Tap the face-down pile to draw 1 or 3 cards. When empty, tap ↺ to recycle the waste.'},
+      {h:'👑 Empty columns', p:'Only a King (or a stack starting with a King) can be placed on an empty column.'},
+      {h:'✋ Moving a stack', p:'Tap the bottom card of the stack (gold outline), then tap the destination. Or drag and drop. Double-tap to move automatically.'},
+      {h:'👆 Double-tap', p:'Double-tap a card to send it to a foundation if possible, otherwise to the best column. Works from the waste pile too.'},
+      {h:'↩ Undo', p:'Undoes the last move. Up to 50 levels.'},
+      {h:'💡 Hint', p:'Suggests the best move: source card lights up blue, destination green. Costs 10 pts.'},
+      {h:'↺ New game', p:'Starts a new game. Asks for confirmation.'},
+      {h:'📱 My apps', p:"Discover the author's other apps. Tap an icon to open the App Store."},
+      {h:'⚙ Settings', p:'Draw 1 or 3 cards, toggle apps on the felt, statistics and score reset.'},
+      {h:'🏆 Score', p:'+5 pts: draw. +10 pts: flip hidden card. +15 pts: foundation. −10 pts: hint. −100 pts: recycle waste.'},
     ]
   }
 };
@@ -1443,19 +1675,9 @@ function confirmNewGame(){
   document.getElementById('confirm-yes').textContent=t('confirmYes');
   document.getElementById('confirm-overlay').classList.add('show');
 }
-function confirmQuit(){
-  clearAppSplash();
-  confirmAction='quit';
-  document.getElementById('confirm-icon').textContent='🏳';
-  document.getElementById('confirm-title').textContent=t('confirmQuit');
-  document.getElementById('confirm-msg').textContent=t('confirmQuitMsg');
-  document.getElementById('confirm-yes').textContent=t('confirmYesQuit');
-  document.getElementById('confirm-overlay').classList.add('show');
-}
 function confirmYes(){
   closeOverlay('confirm-overlay');
-  if(confirmAction==='new') newGame();
-  else if(confirmAction==='quit'){stats.played++;savePrefs();newGame();}
+  if(confirmAction==='new'){ stats.played++; savePrefs(); newGame(); }
   confirmAction=null;
 }
 
@@ -1517,11 +1739,12 @@ function setupDragCard(el,source,colIdx,cardIdx,cards){
       e.stopPropagation();
       lastTap={zone:null,time:0};
       if(source==='waste'){
-        if(state.waste.length>0) doubleTapCard(state.waste[state.waste.length-1],-1);
+        if(state.waste.length>0) doubleTapCard(state.waste[state.waste.length-1],-1, null);
       } else {
         const stack=state.tableau[colIdx];
-        if(stack.length>0&&stack[stack.length-1].faceUp)
-          doubleTapCard(stack[stack.length-1],colIdx);
+        // Utiliser cardIdx pour déplacer le tas depuis la carte tappée
+        if(stack.length>0 && stack[cardIdx] && stack[cardIdx].faceUp)
+          doubleTapCard(stack[cardIdx], colIdx, cardIdx);
       }
       return; // Ne pas démarrer le drag
     }
@@ -1663,6 +1886,8 @@ function removeDragSource(){
   } else if(drag.source==='col'){
     state.tableau[drag.colIdx].splice(drag.cardIdx);
     flipTopCards();
+  } else if(drag.source==='found'){
+    state.foundations[drag.colIdx].pop();
   }
 }
 
@@ -1676,10 +1901,33 @@ function getPoint(e){
 function setupDrop(){
   // pioche : un seul listener
   document.getElementById('zone-stock').addEventListener('click', drawCard);
-  // fondations : clic pour déposer la sélection
+  // double-tap sur fondation → auto-complete
+  let lastFoundTap = 0;
+  for(let f=0;f<4;f++){
+    document.getElementById('zone-f'+f).addEventListener('touchend', e=>{
+      const now = Date.now();
+      if(now - lastFoundTap < 350){
+        e.preventDefault();
+        lastFoundTap = 0;
+        if(canAutoComplete()){
+          startAutoComplete();
+        } else {
+          // Pas encore possible : flash visuel
+          const el = e.currentTarget;
+          el.style.boxShadow = '0 0 0 2px #4fc3f7';
+          setTimeout(()=>{ el.style.boxShadow=''; }, 500);
+        }
+      } else {
+        lastFoundTap = now;
+      }
+    });
+  }
+  // fondations : géré dans renderFoundations via selectFromFoundation
+  // Ce listener sert de fallback si on clique sur la zone vide
   for(let f=0;f<4;f++){
     document.getElementById('zone-f'+f).addEventListener('click',()=>{
-      if(selected&&selected.cards.length===1){
+      if(!selected||selected.source==='found') return;
+      if(selected.cards.length===1){
         const c=selected.cards[0];
         if(canPlaceFoundation(c,f)){
           saveHistory();
@@ -1820,38 +2068,52 @@ function findBestTableauCol(card){
 }
 
 // Double-tap : fondation d'abord, sinon meilleure colonne tableau
-function doubleTapCard(card, sourceCol){
-  // Toujours travailler sur une copie
-  const c = {...card, faceUp:true};
+function doubleTapCard(card, sourceCol, startIdx){
+  // startIdx = index dans la colonne depuis lequel déplacer (null = carte seule waste/sommet)
+  const isStack = sourceCol>=0 && startIdx!==null && startIdx!==undefined;
+  const stack = sourceCol>=0 ? state.tableau[sourceCol] : null;
 
-  // Vérifier que la carte est bien au sommet de la source
-  if(sourceCol>=0){
-    const stack=state.tableau[sourceCol];
-    if(stack.length===0||stack[stack.length-1].rank!==c.rank||stack[stack.length-1].suit!==c.suit) return false;
+  // Construire le tas à déplacer
+  let cards;
+  if(isStack){
+    cards = stack.slice(startIdx).map(c=>({...c,faceUp:true}));
   } else {
-    if(state.waste.length===0||state.waste[state.waste.length-1].rank!==c.rank||state.waste[state.waste.length-1].suit!==c.suit) return false;
+    cards = [{...card, faceUp:true}];
+  }
+  if(!cards.length) return false;
+  const topCard = cards[0]; // carte du bas du tas (celle qui doit se poser)
+
+  // Vérifier que la carte est bien présente à cet endroit
+  if(sourceCol>=0){
+    if(!stack||stack.length===0||!stack[startIdx!==null?startIdx:stack.length-1]) return false;
+  } else {
+    if(state.waste.length===0) return false;
   }
 
-  // 1. Essayer fondation
-  const f=findFoundationFor(c);
-  if(f>=0){
-    saveHistory();
-    if(sourceCol>=0) state.tableau[sourceCol].pop();
-    else state.waste.pop();
-    state.foundations[f].push(c);
-    score+=15;moves++;
-    selected=null;
-    flipTopCards();
-    clearAppSplash();render();updateScore();showAppSplash();checkWin();
-    return true;
+  // 1. Fondation : seulement pour une carte seule
+  if(cards.length===1){
+    const f=findFoundationFor(topCard);
+    if(f>=0){
+      saveHistory();
+      if(sourceCol>=0) state.tableau[sourceCol].splice(startIdx!==null?startIdx:stack.length-1);
+      else state.waste.pop();
+      state.foundations[f].push(topCard);
+      score+=15;moves++;
+      selected=null;
+      flipTopCards();
+      clearAppSplash();render();updateScore();showAppSplash();checkWin();
+      return true;
+    }
   }
-  // 2. Essayer tableau (carte seule uniquement)
-  const destCol=findBestTableauCol(c);
+
+  // 2. Trouver meilleure colonne tableau pour le tas
+  const destCol = findBestTableauCol(topCard);
   if(destCol>=0 && (sourceCol<0 || destCol!==sourceCol)){
     saveHistory();
-    if(sourceCol>=0) state.tableau[sourceCol].pop();
+    const removeIdx = isStack ? startIdx : (sourceCol>=0 ? stack.length-1 : null);
+    if(sourceCol>=0) state.tableau[sourceCol].splice(removeIdx);
     else state.waste.pop();
-    state.tableau[destCol].push(c);
+    state.tableau[destCol].push(...cards);
     score+=5;moves++;
     selected=null;
     flipTopCards();
