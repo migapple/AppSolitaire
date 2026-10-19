@@ -1,6 +1,8 @@
 # App Solitaire
 
 # 1.2
+
+# 1.1
 - Added Help.
 - Ability to move a column of cards.
 - Automatic End.
