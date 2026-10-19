@@ -1,6 +1,8 @@
 # App Solitaire
 
 # 1.2
+- Added Mac Version
+- icons of my others apps doesn't overlay cards
 
 # 1.1
 - Added Help.
